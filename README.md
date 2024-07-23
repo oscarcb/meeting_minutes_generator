@@ -13,6 +13,12 @@ This Python application automates the process of generating meeting minutes from
 
 ## Setup
 
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+
+
 ### 1. Clone the Repository
 To get started, clone the repository to your local machine using the command line:
 
@@ -61,3 +67,6 @@ Contributions are welcome! If you'd like to improve the application or suggest f
 2. Create a new branch for your changes.
 3. Make your changes.
 4. Submit a pull request.
+
+
+## Modified Original 
