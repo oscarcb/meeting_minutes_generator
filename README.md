@@ -12,10 +12,12 @@ This Python application automates the process of generating meeting minutes from
 - Required packages: `whisper`, `openai`, `python-docx`
 
 ## Setup
+   ```bash
 
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+   ```
 
 
 

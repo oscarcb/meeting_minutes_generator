@@ -7,7 +7,8 @@ import subprocess
 import logging
 from datetime import datetime
 from functools import lru_cache
-from openai import OpenAI
+import anthropic
+import openai
 from moviepy.editor import VideoFileClip
 from dotenv import load_dotenv
 
@@ -21,14 +22,25 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 LOG_FILE = "processed_meetings.json"
 RECORDINGS_FOLDER = "recordings"
 MAX_TITLE_LENGTH = 50
-MAX_TOKENS = 4036
+MAX_TOKENS = 100000  # Adjust as needed for Claude
 AUDIO_BITRATE = 48000
 AUDIO_CHANNELS = 1
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Initialize OpenAI client (cached)
 @lru_cache(maxsize=1)
 def get_openai_client():
-    return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    if not OPENAI_API_KEY:
+        raise ValueError("OPENAI_API_KEY is not set in the environment variables")
+    return openai.OpenAI(api_key=OPENAI_API_KEY)
+
+# Initialize Anthropic client (cached)
+@lru_cache(maxsize=1)
+def get_anthropic_client():
+    if not ANTHROPIC_API_KEY:
+        raise ValueError("ANTHROPIC_API_KEY is not set in the environment variables")
+    return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 def load_processed_meetings():
     if os.path.exists(LOG_FILE):
@@ -57,18 +69,15 @@ def extract_time_from_filename(filename):
     return None
 
 def extract_title_from_transcript(transcript):
-    client = get_openai_client()
+    client = get_anthropic_client()
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {'role': 'system', 'content': f'Extract a concise title from the following meeting transcript. The title should be no more than {MAX_TITLE_LENGTH} characters long.'},
-                {'role': 'user', 'content': transcript[:1000]}
-            ],
-            max_tokens=60,
+        response = client.completions.create(
+            model="claude-2",
+            prompt=f"Human: Extract a concise title from the following meeting transcript. The title should be no more than {MAX_TITLE_LENGTH} characters long.\n\nTranscript: {transcript[:1000]}\n\nAssistant: Here's a concise title for the meeting transcript:",
+            max_tokens_to_sample=60,
             temperature=0.7
         )
-        title = response.choices[0].message.content.strip()
+        title = response.completion.strip()
         return title[:MAX_TITLE_LENGTH].replace(" ", "_")
     except Exception as e:
         logging.error(f"Error extracting title: {e}")
@@ -109,46 +118,22 @@ def transcribe_audio(audio_file_path):
 def clean_transcript(transcript):
     return ' '.join(line.strip() for line in transcript.split('\n') if line.strip())
 
-def split_transcript(transcript, max_tokens=MAX_TOKENS):
-    words = transcript.split()
-    chunks = []
-    current_chunk = []
-    current_length = 0
-
-    for word in words:
-        word_length = len(word) + 1  # +1 for space
-        if current_length + word_length > max_tokens:
-            chunks.append(' '.join(current_chunk))
-            current_chunk = [word]
-            current_length = word_length
-        else:
-            current_chunk.append(word)
-            current_length += word_length
-
-    if current_chunk:
-        chunks.append(' '.join(current_chunk))
-
-    return chunks
-
-def generate_summary_with_openai(transcription_chunk):
-    client = get_openai_client()
-    logging.info("Generating summary using OpenAI...")
+def generate_summary_with_anthropic(transcription):
+    client = get_anthropic_client()
+    logging.info("Generating summary using Anthropic...")
     try:
         with open('prompt.txt', 'r', encoding='utf-8') as file:
             custom_prompt = file.read()
 
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {'role': 'system', 'content': custom_prompt},
-                {'role': 'user', 'content': transcription_chunk}
-            ],
-            max_tokens=MAX_TOKENS,
+        response = client.completions.create(
+            model="claude-2",
+            prompt=f"Human: {custom_prompt}\n\nTranscript: {transcription}\n\nAssistant: Here's a summary of the meeting:",
+            max_tokens_to_sample=MAX_TOKENS,
             temperature=0.7
         )
-        return response.choices[0].message.content.strip()
+        return response.completion.strip()
     except Exception as e:
-        logging.error(f"Error during summary generation with OpenAI: {e}")
+        logging.error(f"Error during summary generation with Anthropic: {e}")
         return "Summary generation failed."
 
 def convert_mp4_to_mp3(mp4_file_path, mp3_file_path):
@@ -204,7 +189,13 @@ def process_audio_file(file_path):
     if file_path.lower().endswith('.mp4'):
         logging.info(f"Processing MP4 file: {file_path}")
         mp3_file_path = file_path.rsplit('.', 1)[0] + '.mp3'
-        convert_mp4_to_mp3(file_path, mp3_file_path)
+        
+        if os.path.exists(mp3_file_path):
+            logging.info(f"Corresponding MP3 file already exists: {mp3_file_path}")
+        else:
+            logging.info(f"Converting MP4 to MP3: {file_path}")
+            convert_mp4_to_mp3(file_path, mp3_file_path)
+        
         file_path = mp3_file_path
     elif file_path.lower().endswith('.mp3'):
         logging.info(f"Processing MP3 file: {file_path}")
@@ -256,10 +247,10 @@ def process_meeting_minutes(file_path):
             return
 
     cleaned_transcription = clean_transcript(transcription)
-    transcript_chunks = split_transcript(cleaned_transcription)
-
-    all_summaries = [generate_summary_with_openai(chunk) for chunk in transcript_chunks]
-    final_summary = "\n\n".join(all_summaries)
+    
+    # Generate summary for the entire transcript
+    final_summary = generate_summary_with_anthropic(cleaned_transcription)
+    
     output_filename = generate_output_filename(processed_file, cleaned_transcription)
     save_summary_to_markdown(final_summary, filename=output_filename)
 
@@ -300,6 +291,12 @@ def list_processed_meetings():
             print()
 
 def main():
+    if not OPENAI_API_KEY:
+        logging.error("OPENAI_API_KEY is not set in the environment variables")
+        return
+    if not ANTHROPIC_API_KEY:
+        logging.error("ANTHROPIC_API_KEY is not set in the environment variables")
+        return
     if len(sys.argv) == 1:
         logging.info(f"No file specified. Processing all files in the '{RECORDINGS_FOLDER}' folder.")
         process_recordings_folder()
