@@ -1,74 +1,89 @@
-# 📝 Meeting Minutes Generator
-This Python application automates the process of generating meeting minutes from an audio recording. It uses the Whisper library for transcription and the OpenAI GPT models for summarizing content, then outputs the result in a Word document.
+# 🎙️ Meeting Minutes Generator
 
-## Key Features
-- **Audio File Check**: Ensures the presence of an MP3 audio file before processing.
-- **Audio Transcription**: Uses Whisper to accurately transcribe audio.
-- **Customizable Summary Generation**: Leverages OpenAI’s GPT models to generate summaries, with the ability to customize the summary prompt based on user preferences.
-- **Document Output**: Automatically saves the summary in a Word document format.
+This Python application automates the process of generating meeting minutes from audio recordings. It uses OpenAI's Whisper for transcription and Anthropic's Claude for summarization, outputting the result as a Markdown file.
 
-## Prerequisites
+## 🌟 Key Features
+
+- **Multi-format Support**: Processes both MP3 and MP4 files.
+- **Audio Preprocessing**: Converts MP4 to MP3 and re-encodes audio if necessary.
+- **Efficient Transcription**: Uses OpenAI's Whisper model for accurate audio transcription.
+- **Intelligent Summarization**: Leverages Anthropic's Claude model for generating comprehensive summaries.
+- **Customizable Prompts**: Allows users to customize the summarization prompt.
+- **Markdown Output**: Saves summaries in easily readable Markdown format.
+- **Processing Log**: Maintains a record of processed meetings to avoid duplication.
+
+## 🛠️ Prerequisites
+
 - Python 3.8 or higher
-- Required packages: `whisper`, `openai`, `python-docx`
+- FFmpeg (for audio processing)
+- OpenAI API key
+- Anthropic API key
 
-## Setup
+## 🚀 Setup
+
+1. **Clone the Repository**
    ```bash
-
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+   git clone https://github.com/your-username/meeting-minutes-generator.git
+   cd meeting-minutes-generator
    ```
 
-
-
-### 1. Clone the Repository
-To get started, clone the repository to your local machine using the command line:
-
+2. **Set Up Virtual Environment**
    ```bash
-   git clone https://github.com/Op27/meeting_minutes_generator.git
+   python -m venv venv
+   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
    ```
 
-This will create a directory named `meeting_minutes_generator` which contains all the project files.
-
-### 2. Navigate to the Project Directory
-After cloning, move into the project directory with:
-
+3. **Install Dependencies**
    ```bash
-   cd meeting_minutes_generator
+   pip install -r requirements.txt
    ```
 
-### 3. Install Dependencies
-Install the necessary Python libraries using pip:
-
+4. **Set Up Environment Variables**
+   Create a `.env` file in the project root and add your API keys:
    ```bash
-   pip install whisper openai python-docx
+   OPENAI_API_KEY=your_openai_api_key
+   ANTHROPIC_API_KEY=your_anthropic_api_key
    ```
 
-## Usage
-### Setting Up the Environment
-- Place your MP3 audio file in the root directory of the project.
-- Set your OpenAI API key in the script.
-- Update the `prompt.txt` file to define the design and style of your meeting minutes. This customization allows the summary generation to align with specific formatting or thematic preferences.
+## 📋 Usage
 
-### Running the Application
-Execute the script by running:
+1. **Prepare Audio Files**
+   Place your MP3 or MP4 files in the `recordings` folder.
 
-   ```bash
-   python main.py
-   ```
+2. **Run the Script**
+   - To process all files in the `recordings` folder:
+     ```bash
+     python main.py
+     ```
+   - To process a specific file:
+     ```bash
+     python main.py path/to/your/audio_file.mp3
+     ```
+   - To list all processed meetings:
+     ```bash
+     python main.py --list
+     ```
 
-### Customizing the Summary Prompt
-The application allows for customization of the summary prompt to cater to specific user needs. This feature enables users to influence the style and focus of the generated summaries, making the tool adaptable for different types of meetings.
+3. **Customize Summarization (Optional)**
+   Edit the `prompt.txt` file to customize the summarization prompt. If empty, you'll be prompted to enter a custom prompt during runtime.
 
-## License
-This project is open-sourced under the MIT License. You can view the full license text [here](https://opensource.org/licenses/MIT).
+## 📁 Project Structure
 
-## Contribution
-Contributions are welcome! If you'd like to improve the application or suggest features:
-1. Fork the repository.
-2. Create a new branch for your changes.
-3. Make your changes.
-4. Submit a pull request.
+- `main.py`: The main script that orchestrates the entire process.
+- `recordings/`: Folder to place input audio files.
+- `meetings/`: Output folder for generated Markdown summaries.
+- `prompt.txt`: File for custom summarization prompts.
+- `processed_meetings.json`: Log of processed meetings.
 
+## 🔧 Customization
 
-## Modified Original 
+- Adjust `MAX_TOKENS`, `AUDIO_BITRATE`, and other constants in `main.py` as needed.
+- Modify the summarization logic in `generate_summary_with_anthropic()` for different output styles.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

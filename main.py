@@ -11,6 +11,7 @@ import anthropic
 import openai
 from moviepy.editor import VideoFileClip
 from dotenv import load_dotenv
+from pip._vendor.rich.prompt import Confirm, Prompt
 
 # Load environment variables
 load_dotenv()
@@ -123,10 +124,17 @@ def generate_summary_with_anthropic(transcription):
     logging.info("Generating summary using Anthropic...")
     try:
         with open('prompt.txt', 'r', encoding='utf-8') as file:
-            custom_prompt = file.read()
+            custom_prompt = file.read().strip()
+        
+        if not custom_prompt:
+            use_custom_prompt = Confirm.ask("The prompt file is empty. Would you like to provide a custom prompt?")
+            if use_custom_prompt:
+                custom_prompt = Prompt.ask("Please enter your custom prompt")
+            else:
+                custom_prompt = "Summarize the following meeting transcript:"
 
         response = client.completions.create(
-            model="claude-2",
+            model="claude-3.5",
             prompt=f"Human: {custom_prompt}\n\nTranscript: {transcription}\n\nAssistant: Here's a summary of the meeting:",
             max_tokens_to_sample=MAX_TOKENS,
             temperature=0.7
